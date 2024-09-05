@@ -6,8 +6,12 @@ import emoji
 
 # Firebase initialization
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-credentials.json")
-    firebase_admin.initialize_app(cred)
+    try:
+        cred = credentials.Certificate("firebase-credentials.json")
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"Firebase initialization error: {str(e)}")
+        st.stop()
 
 db = firestore.client()
 
@@ -34,9 +38,13 @@ def send_login_link(email):
         link = auth.generate_sign_in_with_email_link(email, action_code_settings)
         st.success(f"Login link (in a real app, this would be emailed): {link}")
         return link
+    except firebase_admin._auth_utils.InvalidIdTokenError as e:
+        st.error(f"Invalid ID token: {str(e)}")
+    except firebase_admin._auth_utils.ExpiredIdTokenError as e:
+        st.error(f"Expired ID token: {str(e)}")
     except Exception as e:
         st.error(f"An error occurred while generating the login link: {str(e)}")
-        return None
+    return None
 
 def verify_login(link):
     try:
