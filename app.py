@@ -4,12 +4,16 @@ from firebase_admin import credentials, auth, firestore
 import random
 import emoji
 from google.auth.exceptions import RefreshError
+import os
 
 # Firebase initialization
 if not firebase_admin._apps:
     try:
-        cred = credentials.Certificate("firebase-credentials.json")
+        # Use os.path.join for better cross-platform compatibility
+        cred_path = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
+        cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
+        st.success("Firebase initialized successfully")
     except Exception as e:
         st.error(f"Firebase initialization error: {str(e)}")
         st.stop()
@@ -40,11 +44,13 @@ def send_login_link(email):
         st.success(f"Login link (in a real app, this would be emailed): {link}")
         return link
     except RefreshError as e:
-        st.error(f"Authentication error: {str(e)}")
+        st.error(f"Authentication error (RefreshError): {str(e)}")
+        st.error(f"Error details: {e.args}")
     except auth.AuthError as e:
         st.error(f"Firebase Auth error: {str(e)}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
+        st.error(f"Error type: {type(e).__name__}")
     return None
 
 def verify_login(link):
