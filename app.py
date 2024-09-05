@@ -3,6 +3,7 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import random
 import emoji
+from google.auth.exceptions import RefreshError
 
 # Firebase initialization
 if not firebase_admin._apps:
@@ -28,7 +29,7 @@ def generate_category_emoji(category):
 def send_login_link(email):
     try:
         action_code_settings = auth.ActionCodeSettings(
-            url='https://your-app-url.com',
+            url='https://your-app-name.streamlit.app',  # Update this URL
             handle_code_in_app=True,
             ios_bundle_id='com.example.ios',
             android_package_name='com.example.android',
@@ -38,12 +39,12 @@ def send_login_link(email):
         link = auth.generate_sign_in_with_email_link(email, action_code_settings)
         st.success(f"Login link (in a real app, this would be emailed): {link}")
         return link
-    except firebase_admin._auth_utils.InvalidIdTokenError as e:
-        st.error(f"Invalid ID token: {str(e)}")
-    except firebase_admin._auth_utils.ExpiredIdTokenError as e:
-        st.error(f"Expired ID token: {str(e)}")
+    except RefreshError as e:
+        st.error(f"Authentication error: {str(e)}")
+    except auth.AuthError as e:
+        st.error(f"Firebase Auth error: {str(e)}")
     except Exception as e:
-        st.error(f"An error occurred while generating the login link: {str(e)}")
+        st.error(f"An unexpected error occurred: {str(e)}")
     return None
 
 def verify_login(link):
