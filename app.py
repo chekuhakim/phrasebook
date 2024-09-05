@@ -1,7 +1,8 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-from transformers import pipeline
+import random
+import emoji
 
 # Firebase initialization
 if not firebase_admin._apps:
@@ -10,21 +11,14 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# Load the emoji generation pipeline (use st.cache_resource to load it only once)
-@st.cache_resource
-def load_emoji_pipeline():
-    return pipeline("text2text-generation", model="KomeijiForce/bart-large-emojilm", max_length=100)
-
-emoji_pipeline = load_emoji_pipeline()
-
-# Emoji translation function
-def translate(sentence):
-    result = emoji_pipeline(sentence, max_length=100, num_return_sequences=1)
-    return result[0]['generated_text'].replace(" ", "")
+# Simple emoji generation function
+def generate_emojis(text, num_emojis=3):
+    all_emojis = list(emoji.EMOJI_DATA.keys())
+    return ''.join(random.choices(all_emojis, k=num_emojis))
 
 # Function to generate category emoji
 def generate_category_emoji(category):
-    return translate(category)[:2]
+    return generate_emojis(category, num_emojis=1)
 
 # Authentication functions
 def send_login_link(email):
@@ -114,5 +108,5 @@ else:
     demo_text = st.text_input("Enter text to generate emojis")
     if st.button("Generate Emojis"):
         if demo_text:
-            emojis = translate(demo_text)
+            emojis = generate_emojis(demo_text, num_emojis=5)
             st.write(f"Generated emojis: {emojis}")
