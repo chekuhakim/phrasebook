@@ -1,7 +1,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-from transformers import BartTokenizer, BartForConditionalGeneration
+from transformers import pipeline
 
 # Firebase initialization
 if not firebase_admin._apps:
@@ -10,26 +10,21 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# Load the BART model (use st.cache_resource to load it only once)
+# Load the emoji generation pipeline (use st.cache_resource to load it only once)
 @st.cache_resource
-def load_model():
-    path = "KomeijiForce/bart-large-emojilm"
-    tokenizer = BartTokenizer.from_pretrained(path)
-    generator = BartForConditionalGeneration.from_pretrained(path)
-    return tokenizer, generator
+def load_emoji_pipeline():
+    return pipeline("text2text-generation", model="KomeijiForce/bart-large-emojilm", max_length=100)
 
-tokenizer, generator = load_model()
+emoji_pipeline = load_emoji_pipeline()
 
 # Emoji translation function
-def translate(sentence, **argv):
-    inputs = tokenizer(sentence, return_tensors="pt")
-    generated_ids = generator.generate(inputs["input_ids"], **argv)
-    decoded = tokenizer.decode(generated_ids[0], skip_special_tokens=True).replace(" ", "")
-    return decoded
+def translate(sentence):
+    result = emoji_pipeline(sentence, max_length=100, num_return_sequences=1)
+    return result[0]['generated_text'].replace(" ", "")
 
 # Function to generate category emoji
 def generate_category_emoji(category):
-    return translate(category, num_beams=4, do_sample=True, max_length=10)[:2]
+    return translate(category)[:2]
 
 # Authentication functions
 def send_login_link(email):
@@ -43,12 +38,8 @@ def send_login_link(email):
             android_minimum_version='12'
         )
         link = auth.generate_sign_in_with_email_link(email, action_code_settings)
-        # In a real app, you'd send this link via email. For demo, we'll just display it.
         st.success(f"Login link (in a real app, this would be emailed): {link}")
         return link
-    except firebase_admin._auth_utils.ConfigurationNotFoundError:
-        st.error("Firebase authentication is not properly configured. Please check your Firebase project settings.")
-        return None
     except Exception as e:
         st.error(f"An error occurred while generating the login link: {str(e)}")
         return None
@@ -57,7 +48,6 @@ def verify_login(link):
     try:
         signin_info = auth.get_sign_in_with_email_link_info(link)
         if signin_info:
-            # Create a custom token
             custom_token = auth.create_custom_token(signin_info.user_id)
             return custom_token
     except:
@@ -124,5 +114,5 @@ else:
     demo_text = st.text_input("Enter text to generate emojis")
     if st.button("Generate Emojis"):
         if demo_text:
-            emojis = translate(demo_text, num_beams=4, do_sample=True, max_length=100)
+            emojis = translate(demo_text)
             st.write(f"Generated emojis: {emojis}")
